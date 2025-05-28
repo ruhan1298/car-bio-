@@ -6,13 +6,16 @@ interface AdminAttributes {
   fullName?: string;
   image?: string;
   email?:string;
+  Location?:string;
+    agentId?: string[];
   mobilenumber?:string
   password?:string
-  role?:string
   permissions?: string[]; // Store allowed actions
   resetPasswordToken?:string
   resetPasswordExpires?:Date
   language?:string
+  role?: 'Admin'|'Agency'
+
 
 
   
@@ -27,11 +30,13 @@ class Admin extends Model<AdminAttributes> {
     email!:string;
     mobilenumber!:string;
     password!:string;
-    role!:string;
     permissions!: string[]; // Store allowed actions
     resetPasswordToken!:string
     resetPasswordExpires!:Date
     language!:string
+    Location!:string;
+    agentId!: string[];
+    role!:'Admin'|'Agency'
 
 
 
@@ -82,7 +87,14 @@ Admin.init(
         type:DataTypes.STRING,
         defaultValue:'en'
 
-      }
+      },
+      Location:{
+        type:DataTypes.STRING,
+        allowNull:true
+      },
+      role:{
+      type:DataTypes.ENUM('Admin','Agency')
+    },
 
   },
   {

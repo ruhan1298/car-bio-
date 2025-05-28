@@ -12,8 +12,7 @@ interface AgencyAttributes {
   resetPasswordToken?:string
   resetPasswordExpires?:Date
   mobilenumber?:string
-
-
+  createdAt?: Date;
 
   
  
@@ -86,6 +85,9 @@ Agency.init(
         type:DataTypes.DATE,
         allowNull:true 
       },  
+ 
+      // Agencies
+
       // Add other attributes as needed
     
     

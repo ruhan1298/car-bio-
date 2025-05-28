@@ -77,5 +77,27 @@ router.post("/Login", languageMiddleware,(req: Request, res: Response) => {
     agentAuthController.SupprtAdd(req, res);
   });
   
+  router.post("/get-agency",languageMiddleware,userAuth, (req: Request, res: Response) => {
+
+
+    agentAuthController.AgencyGet(req, res);
+  });
+
+  router.post("/start-job",languageMiddleware,upload.array('photos'),userAuth, (req: Request, res: Response) => {
+
+
+    agentAuthController.SartJob(req, res);
+  });
+
+  router.post("/get-customerdata",languageMiddleware,userAuth, (req: Request, res: Response) => {
+
+
+    agentAuthController.GetcustomerData(req, res);
+  });
+  
+router.post("/language-change",languageMiddleware,userAuth, (req: Request, res: Response) => {
+    agentAuthController.LanguageChange(req, res); 
+
+})
 
   export default router;

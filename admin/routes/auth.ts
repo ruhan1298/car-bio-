@@ -92,4 +92,17 @@ router.post("/Login", languageMiddleware,(req: Request, res: Response) => {
   router.post("/reply-support",languageMiddleware, (req: Request, res: Response) => {
     authController.ReplySupport(req, res);
   });
+  router.post("/add-job",languageMiddleware, (req: Request, res: Response) => {
+    authController.jobAdd(req, res);
+  });
+
+  router.post("/export-job",languageMiddleware, (req: Request, res: Response) => {
+    authController.ExportJobData(req, res);
+  });
+  router.post("/export-alljob",languageMiddleware, (req: Request, res: Response) => {
+    authController.ExportAllJobData(req, res);
+  });
+  router.post("/dashboard",languageMiddleware, (req: Request, res: Response) => {
+    authController.Dashboard(req, res);
+  });
   export default router

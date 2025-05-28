@@ -84,20 +84,20 @@ export default {
             .json({ status: 0, message:messages.internalServerError });
         }
       },
-      GetAgency: async (req: Request, res: Response) => {
-        const user_id = req.user?.id;
+      // GetAgency: async (req: Request, res: Response) => {
+      //   const user_id = req.user?.id;
     
-        const getAdmin = await Agency.findAll({
-          where: {
-            id: user_id,
-          },
-        });
-        res.json({
-          status: 1,
-          message:messages.agencyProfilesuccess,
-          data: getAdmin,
-        });
-      },
+      //   const getAdmin = await Agency.findAll({
+      //     where: {
+      //       id: user_id,
+      //     },
+      //   });
+      //   res.json({
+      //     status: 1,
+      //     message:messages.agencyProfilesuccess,
+      //     data: getAdmin,
+      //   });
+      // },
       UpdateAgency: async (req: Request, res: Response) => {
         try {
         const messages = (req as any).messages
@@ -327,4 +327,5 @@ export default {
         }
     
       },
-    }
+   
+        }

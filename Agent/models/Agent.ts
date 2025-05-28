@@ -7,11 +7,12 @@ interface AgentAttributes {
   image?: string;
   email?:string;
   mobilenumber?:string
-  password?:string
+  password?:string,
+  language?:string
   
   resetPasswordToken?:string
   resetPasswordExpires?:Date
-
+createdAt?: Date;
 
   
  
@@ -27,6 +28,7 @@ class Agent extends Model<AgentAttributes> {
     password!:string;
     resetPasswordToken!:string
     resetPasswordExpires!:Date
+   language!:string
 
 
 
@@ -72,7 +74,12 @@ Agent.init(
       resetPasswordToken: {
         type: DataTypes.STRING,
         allowNull: true,
-      }
+      },
+      language: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: 'en', // Default language
+      },
 
   },
   {

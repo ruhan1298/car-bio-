@@ -11,7 +11,7 @@ interface customerAttributes {
   
   resetPasswordToken?:string
   resetPasswordExpires?:Date
-
+  createdAt?: Date;
 
   
  

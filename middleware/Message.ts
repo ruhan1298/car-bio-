@@ -60,8 +60,13 @@ const messages: { [key: string]: { [key: string]: string } } = {
         supportUpdated:"Support updated successfully",
         supportReply:"Support reply successfully",
         supportDeleted:"Support deleted successfully",
+        dashboardGet:"Dashboard get successfully",
+        dashboardNotFound:"Dashboard not found",
+        customerNotFound:"Customer not found",
+        agentGet:"Agent get successfully",
+        agentNotFound:"Agent not found",
+languageChanged: "Language changed successfully", },
 
-    },
     fr: {
         requiredInput: "Toutes les entrées sont requises",
         invalidEmail: "E-mail invalide",
@@ -124,6 +129,10 @@ const messages: { [key: string]: { [key: string]: string } } = {
         supportUpdated:"Support mis à jour avec succès",
         supportReply:"Réponse au support réussie",
         supportDeleted:"Support supprimé avec succès",
+        dashboardGet:"Tableau de bord récupéré avec succès",
+        dashboardNotFound:"Tableau de bord non trouvé",
+        customerNotFound:"Client non trouvé",
+        languageChanged: "Langue changée avec succès",
     }
 };
 

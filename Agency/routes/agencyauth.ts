@@ -10,9 +10,9 @@ import languageMiddleware from '../../middleware/languagemiddleware';
 router.post("/Login", languageMiddleware,(req: Request, res: Response) => {
     agencyController.AgencyLogin(req, res);
   });
-  router.get("/get-profile",languageMiddleware,userAuth, (req: Request, res: Response) => {
-    agencyController.GetAgency(req, res);
-  });
+  // router.get("/get-profile",languageMiddleware,userAuth, (req: Request, res: Response) => {
+  //   agencyController.GetAgency(req, res);
+  // });
   router.post("/update-agency",languageMiddleware,upload.single('image'),userAuth, (req: Request, res: Response) => {
     agencyController.UpdateAgency(req, res);
   });
@@ -35,6 +35,7 @@ router.post("/Login", languageMiddleware,(req: Request, res: Response) => {
 
     agencyController.ForgetPassword(req, res);
   });
+
 
 
 

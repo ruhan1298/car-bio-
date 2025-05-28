@@ -13,6 +13,7 @@ agentId?:string
   subject?:string;
   comment?:string
   isReply?:boolean
+  createdAt?: Date;
 
 
 

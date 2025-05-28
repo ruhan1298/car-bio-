@@ -7,6 +7,7 @@ interface MasterAttributes {
   id?: number; // Use string type for UUID
   name?: string;
   type?: string;
+  createdAt?: Date;
 
 
   

@@ -26,6 +26,7 @@ import Agency from "../../admin/models/Agency";
 import MasterData from "../../admin/models/MasterData";
 import customer from "../../admin/models/customer";
 import Support from "../../Agent/models/support";
+import { log } from "console";
 
 export default {
     
@@ -83,6 +84,7 @@ export default {
               mobilenumber: user.mobilenumber,
               image: user.image,
               token: token,
+              language: user.language 
             },
           });
         } catch (error) {
@@ -161,7 +163,7 @@ const getAgency = await Agency.findAll();
           await user.save();
     
           // Return success response with the updated user data
-          res.status(200).json({ message:messages.agentUpdated, user });
+          res.status(200).json({status:1, message:messages.agentUpdated, user });
         } catch (error) {
           console.error(error);
           res.status(500).json({ message: messages.internalServerError});
@@ -351,66 +353,67 @@ const getAgency = await Agency.findAll();
     
       },
       AddJob: async (req: Request, res: Response) => {
-        try { 
-          const messages = (req as any).messages
+      //   try { 
+      //     const messages = (req as any).messages
 
-          const agentId = req.user?.id;
-          if (!agentId) {
-              return res.status(401).json({ message: 'Unauthorized' });
-          }
+      //     const agentId = req.user?.id;
+      //     if (!agentId) {
+      //         return res.status(401).json({ message: 'Unauthorized' });
+      //     }
   
-          const {
-              customerName,
-              customerId,
-              site,
-              carNumber,
-              brand,
-              element,
-              deliveryDate,
-              deliveryTime,
-              newDamage,
-              tasks = [] // Default to an empty array if not provided
-          } = req.body;
+      //     const {
+      //         customerName,
+      //         customerId,
+      //         site,
+      //         carNumber,
+      //         brand,
+      //         element,
+      //         deliveryDate,
+      //         deliveryTime,
+      //         newDamage,
+      //         tasks = [] // Default to an empty array if not provided
+      //     } = req.body;
   
-          const photos = req.files
-              ? (req.files as Express.Multer.File[]).map((file) => ({
-                  id: imageCounter++,
-                  image: file.path
-              }))
-              : [];
+      //     const photos = req.files
+      //         ? (req.files as Express.Multer.File[]).map((file) => ({
+      //             id: imageCounter++,
+      //             image: file.path
+      //         }))
+      //         : [];
   
-          // Process tasks (assign UUIDs)
-          const parsedTasks = Array.isArray(tasks) 
-          ? tasks 
-          : typeof tasks === 'string' 
-              ? JSON.parse(tasks) // If tasks is a stringified JSON array, parse it
-              : [];
+      //     // Process tasks (assign UUIDs)
+      //     const parsedTasks = Array.isArray(tasks) 
+      //     ? tasks 
+      //     : typeof tasks === 'string' 
+      //         ? JSON.parse(tasks) // If tasks is a stringified JSON array, parse it
+      //         : [];
       
-      const processedTasks = parsedTasks.map((task: any) => ({
-          id: uuidv4(),
-          name: task.name
-      }));
+      // const processedTasks = parsedTasks.map((task: any) => ({
+      //     id: uuidv4(),
+      //     name: task.name
+      // }));
   
-          const newJob = await Job.create({
-              customerName,
-              customerId,
-              site,
-              carNumber,
-              brand,
-              element,
-              deliveryDate,
-              deliveryTime,
-              newDamage,
-              photos,
-              tasks: processedTasks, // Ensure processed tasks are saved
-              agentId,
-          });
+      //     const newJob = await Job.create({
+      //         customerName,
+      //         site,
+      //         carNumber,
+      //         brand,
+      //         element,
+      //         deliveryDate,
+      //         deliveryTime,
+      //         newDamage,
+      //         photos,
+      //         tasks: processedTasks, // Ensure processed tasks are saved
+      //         agentId,
+      //         agencyId,
+      //         uniqueId
+      //     });
   
-          return res.status(201).json({status:1, message:messages.jobAdded, job: newJob });
-      } catch (error) {
-          console.error('Error adding job:', error);
-          return res.status(500).json({ message:messages.internalServerError });
-      }
+      //     return res.status(201).json({status:1, message:messages.jobAdded, job: newJob });
+      // } catch (error) {
+      //     console.error('Error adding job:', error);
+      //     return res.status(500).json({ message:messages.internalServerError });
+      // }
       },
       UpdateJob: async (req: Request, res: Response) => {
         try {
@@ -419,7 +422,6 @@ const getAgency = await Agency.findAll();
           const {
             jobId,
             customerName,
-            customerId,
             site,
             carNumber,
             brand,
@@ -451,7 +453,7 @@ const getAgency = await Agency.findAll();
               : job.tasks;
       
           job.customerName = customerName || job.customerName;
-          job.customerId = customerId || job.customerId;
+          // job.customerId = customerId || job.customerId;
           job.site = site || job.site;
           job.carNumber = carNumber || job.carNumber;
           job.brand = brand || job.brand;
@@ -593,6 +595,8 @@ const GetCustomer = await customer.findAll({
              
               
             } catch (error) {
+              console.error("Error fetching customer data:", error);
+              res.status(500).json({ status: 0, message: messages.internalServerError });
               
             }
           },
@@ -620,9 +624,201 @@ const GetCustomer = await customer.findAll({
         res.status(500).json({ status: 0, message: messages.internalServerError });
         
       }
-    }
-
-
+    },
+    AgencyGet: async (req: Request, res: Response) => {
+      try {
+        const agentId = req.user?.id;
     
-    }
+        if (!agentId) {
+          return res.status(401).json({ status: 0, message: "Unauthorized" });
+        }
+    
+        // Find one job of the agent to get the agencyId
+        const job = await Job.findOne({ where: { agentId } });
+    
+        if (!job || !job.agencyId) {
+          return res.status(404).json({ status: 0, message: "No agency found for this agent" });
+        }
+    
+        // Fetch agency details using the agencyId from the job
+        const agency = await Agency.findByPk(job.agencyId,{
+attributes:["id","Name","image","Location"]
+        });
+    
+        if (!agency) {
+          return res.status(404).json({ status: 0, message: "Agency not found" });
+        }
+    
+        return res.status(200).json({ status: 1,message:"Agency get successfully", data:agency });
+      } catch (error) {
+        console.error("Error getting agency:", error);
+        return res.status(500).json({ status: 0, message: "Internal Server Error" });
+      }
+
+    },
+     SelectAgency: async (req:Request,res:Response)=>{
+      try {
+        const messages = (req as any).messages
+
+        const agentId = req.user?.id; // Optional: if you want to filter by agent
   
+        const customerNames = await Job.findAll({
+          where: {
+            agentId: agentId, // remove this if you want all customers
+          },
+          attributes: ['customerName'],
+          group: ['customerName'], // to avoid duplicates
+          raw: true,
+        });
+  
+        return res.status(200).json({
+          status: 1,
+          message:messages.customerGet,
+          data: customerNames.map(item => item.customerName), // return only names
+        });
+      } catch (error) {
+        console.error('Error fetching customer names:', error);
+        return res.status(500).json({
+          status: 0,
+          message:messages.internalServerError
+        });
+      }
+    },
+
+SartJob:async (req:Request,res:Response)=>{
+  try {
+    const jobId = req.body.jobId;
+    const messages = (req as any).messages;
+
+    const {
+      customerName,
+      site,
+      carNumber,
+      brand,
+      element,
+      deliveryDate,
+      deliveryTime,
+      newDamage,
+      tasks = [],
+      agentId,
+      agencyId,
+      uniqueId,
+
+      status = "Ongoing"
+    } = req.body;
+    console.log(req.body,"BODY");
+    
+      const photos = req.files
+            ? (req.files as Express.Multer.File[]).map((file) => ({
+                id: imageCounter++,
+                image: file.path
+            }))
+            : [];
+            console.log(photos,"IMAGE");
+            
+    
+
+    const parsedTasks = Array.isArray(tasks)
+      ? tasks
+      : typeof tasks === 'string'
+      ? JSON.parse(tasks)
+      : [];
+
+    const processedTasks = parsedTasks.map((task: any) => ({
+      id: uuidv4(),
+      name: task.name
+    }));
+
+    const job = await Job.findByPk(jobId);
+
+    if (!job) {
+      return res.status(404).json({ status: 0, message: "Job not found" });
+    }
+
+    // Update all fields
+    job.customerName = customerName || job.customerName;
+    job.site = site || job.site;
+    job.carNumber = carNumber || job.carNumber;
+    job.brand = brand || job.brand;
+    job.element = element || job.element;
+    job.deliveryDate = deliveryDate || job.deliveryDate;
+    job.deliveryTime = deliveryTime || job.deliveryTime;
+    job.newDamage = newDamage || job.newDamage;
+    job.tasks = processedTasks.length ? processedTasks : job.tasks;
+    job.agentId = agentId || job.agentId;
+    job.agencyId = agencyId || job.agencyId;
+    job.photos = photos.length ? photos : job.photos;
+    job.status = status || job.status
+    job.uniqueId = uniqueId || job.uniqueId; // Add this line to update uniqueId
+
+    await job.save();
+
+    return res.status(200).json({
+      status: 1,
+      message: messages?.jobUpdated || "Job updated successfully",
+      job
+    });
+  } catch (error) {
+    console.error("Error updating job:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+},
+GetcustomerData:async (req:Request,res:Response)=>{
+  try {
+    const customerId = req.body.customerId; // Get customerId from request body
+  const messages = (req as any).messages
+  console.log(customerId,"CUSTOMER ID")
+  if (!customerId) {
+    return res.status(400).json({ status: 0, message: messages.customerIdRequired });
+  }
+const customerData = await Job.findOne({
+  where: {  
+    customerId: customerId,
+  },
+});
+
+if (!customerData) {
+  return res.status(404).json({ status: 0, message: messages.customerNotFound });
+}
+
+res.status(200).json({ status: 1, message: messages.customerDataFetched, data: customerData });
+} catch (error) {
+    console.error("Error fetching customer data:", error);
+    return res.status(500).json({ status: 0, message: messages.internalServerError });
+    
+  }
+},
+LanguageChange: async (req: Request, res: Response) => {
+  try {
+    const messages = (req as any).messages
+    const language = req.body.language; // Get the language from the request body
+   console.log(language, "LANGUAGE::::::");
+    const user_id = req.user?.id;
+
+    if (!language) {
+      return res.status(400).json({ status: 0, message: messages.languageRequired });
+    }
+
+    // Update the user's language preference
+    const user = await Agent.findByPk(user_id);
+    if (!user) {
+      return res.status(404).json({ status: 0, message: messages.userNotFound });
+    }
+
+    user.language = language;
+    await user.save();
+
+    return res.status(200).json({ status: 1, message: messages.languageChanged });
+    
+  } catch (error) {
+    console.error("Error changing language:", error);
+    const messages = (req as any).messages
+    return res.status(500).json({ status: 0, message: messages.internalServerError });
+    
+  }
+}
+
+  
+    
+    
+}

@@ -4,7 +4,6 @@ import sequelize from '../../models/index';
 interface JobAttributes {
   id?: string; // Use string type for UUID
   customerName?: string;
-  customerId?: string;
   site?: string;
   carNumber?: string;
   brand?: string;
@@ -15,13 +14,17 @@ interface JobAttributes {
   photos?: Array<{ id:number; image: string }>;
   tasks?: Array<{ id: string; name: string }>; // Task field with only id and name
   agentId?:string
-  status?:'Ongoing'|"Completed"
+
+  status?:'Pending'|'Ongoing'|"Completed"
+  agencyId?:number
+  uniqueId:string
+  customerId?:string
+  createdAt?: Date;
 }
 
 class Job extends Model<JobAttributes> {
   id!: string;
   customerName!: string;
-  customerId!: string;
   site!: string;
   carNumber!: string;
   brand!: string;
@@ -32,10 +35,12 @@ class Job extends Model<JobAttributes> {
   photos!: Array<{ id: number; image: string }>;
   tasks!: Array<{ id: string; name: string }>;
   agentId!:string
-  status!:'Ongoing'|'Completed'
+  status!:'Pending'|'Ongoing'|'Completed'
   createdAt!: Date;
-  
+  agencyId!:number
+  uniqueId!:string
 
+  customerId!:string
 }
 
 Job.init(
@@ -46,14 +51,16 @@ Job.init(
       allowNull: false,
       primaryKey: true,
     },
+    uniqueId: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      allowNull: true,
+    },
     customerName: {
       type: DataTypes.STRING,
       allowNull: true,
     },
-    customerId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
+    
     carNumber: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -91,10 +98,23 @@ Job.init(
       allowNull:true
     },
     status:{
-      type:DataTypes.ENUM('Ongoing','Completed'),
-      defaultValue:"Ongoing"
-    }
+      type:DataTypes.ENUM('Pending','Ongoing','Completed'),
+      defaultValue:"Pending"
+    },
+    agencyId:{
+      type:DataTypes.INTEGER,
+      allowNull:true
+    },
+    newDamage:{
+      type:DataTypes.TEXT,
+      allowNull:true
+    },
+    customerId:{
+      type:DataTypes.STRING,
+      allowNull:true
+    },
   },
+
   {
     sequelize,
     modelName: 'Job',

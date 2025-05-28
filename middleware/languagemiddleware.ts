@@ -6,8 +6,17 @@ interface RequestWithMessages extends Request {
 }
 
 const languageMiddleware = (req: RequestWithMessages, res: Response, next: NextFunction): void => {
-    const lang = req.headers['accept-language']?.split(',')[0] || 'en';
-    req.messages = messages[lang] || messages['en'];
+let langHeader = req.headers['language'];
+let lang: string;
+
+if (Array.isArray(langHeader)) {
+    lang = langHeader[0] || 'en';
+} else if (typeof langHeader === 'string') {
+    lang = langHeader.split(',')[0] || 'en';
+} else {
+    lang = 'en';
+}
+req.messages = messages[lang] || messages['en'];
 
     // Debugging logs
     console.log(lang, "Detected Language");

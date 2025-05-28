@@ -40,17 +40,18 @@ app.use('/api/v1/agency',agencyRouter)
 import admin from './admin/models/auth'
 admin.sync({alter:true})
 import agent from './Agent/models/Agent'
+agent.sync({alter:true})
 import Job from './Agent/models/job'
-// Job.sync({force:true})
+Job.sync({alter:true})
   // agent.sync({force:true})
 import agency from './admin/models/Agency'
 agency.sync({alter:true})
 import Support from './Agent/models/support'
 Support.sync({alter:true})
 import customer from './admin/models/customer'
-// customer.sync({force:true})
+customer.sync({alter:true})
 import MasterData from './admin/models/MasterData';
-// MasterData.sync({force:true})
+MasterData.sync({alter:true})
 import Terms from './admin/models/terms'
 // Terms.sync({force:true})
 

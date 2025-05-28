@@ -10,10 +10,14 @@ import { Sequelize } from 'sequelize';
 import path from 'path';
 import hbs from 'handlebars';
 import fs from 'fs';
-import Agency from "../models/Agency";
 const templatePath = path.join(__dirname, '../../views/otptemplate.hbs');
 const source = fs.readFileSync(templatePath, 'utf-8');
 const template = hbs.compile(source);
+import { v4 as uuidv4 } from 'uuid'; // Import UUID generator
+import { createObjectCsvStringifier } from 'csv-writer';
+
+let imageCounter = 0; // Initialize imageCounter
+
 
 import crypto from 'crypto';
 import Agent from "../../Agent/models/Agent";
@@ -23,7 +27,28 @@ import messages from "../../middleware/Message";
 import Job from "../../Agent/models/job";
 import Terms from "../models/terms";
 import Support from "../../Agent/models/support";
+import Agency from "../../admin/models/Agency";
+import ExcelJS from 'exceljs';
+
 import { log } from "console";
+const getTimeRanges = () => {
+  const now = new Date();
+
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+  return { startOfToday, startOfWeek, startOfMonth, startOfYear };
+};
+
+
 
 export default {
     
@@ -377,7 +402,7 @@ export default {
       },
       AddAgency: async (req: Request, res: Response) => {
         try {
-          const {Name,Location,agentId,email}
+          const {fullName,Location,agentId,email}
             
            = req.body
           console.log(req.body, "BODY");
@@ -398,13 +423,14 @@ export default {
         
           
       
-          const addagency = await Agency.create({
-            Name,
+          const addagency = await Admin.create({
+            fullName,
             Location,
             image,
             agentId: agentIdsArray,
 
             email,
+            role:"Agency",
             password: hashedPassword,
           });
           console.log(addagency, "AGENCY");
@@ -420,11 +446,12 @@ export default {
             from: "tryoutscout@gmail.com",
             to: email,
             subject: "Agency Account",
-            text: `Hello ${Name},\n\nYour Agency  account has been created successfully.\n\nYour login credentials are:\email: ${addagency.email}\nPassword: ${password}\n\nPlease change your password upon first login.\n\nRegards,\nAdmin Team`,
+            text: `Hello ${fullName},\n\nYour Agency  account has been created successfully.\n\nYour login credentials are:\email: ${addagency.email}\nPassword: ${password}\n\nPlease change your password upon first login.\n\nRegards,\nAdmin Team`,
           };
       
           // Send email
           await transporter.sendMail(mailOptions);
+      // console.log(mailOptions,"MAILOPTION");
       
 
           
@@ -481,16 +508,16 @@ export default {
         try {
            const {
             id,
-            Name,
+            fullName,
             Location
           } = req.body;
           const image = req.file?.path;
-          const agency = await Agency.findByPk(id);
+          const agency = await Admin.findByPk(id);
           if (!agency) {
             return res.status(404).json({ message: messages.agencyNotFound });
 
            }
-            agency.Name = Name || agency.Name;
+            agency.fullName = fullName || agency.fullName;
             agency.Location = Location || agency.Location;
             agency.image = image || agency.image;
             await agency.save();
@@ -691,6 +718,7 @@ export default {
     },
     GetMasterData: async (req: Request, res: Response) => {
       try {
+
         
       } catch (error) {
         
@@ -739,7 +767,7 @@ export default {
     
         // Job records fetch karna with pagination & search
         const getJobs = await Job.findAll({
-          attributes: ['id', 'deliveryDate', 'site', 'agentId'],
+          attributes: ['id', 'deliveryDate', 'site', 'agentId','status'],
           where: search ? { site: { [Op.like]: `%${search}%` } } : undefined,
           limit,
           offset,
@@ -757,6 +785,7 @@ export default {
               ...job.toJSON(),
               agentFullName: agent ? agent.fullName : null,
               agentImage: agent ? agent.image : null,
+              
             };
           })
         );
@@ -790,23 +819,35 @@ export default {
         const messages = (req as any).messages
 
     
-        // Har job ke agentId se Agent ka data fetch karna
-        const jobsWithAgentData = await Promise.all(
+        const jobsWithDetails = await Promise.all(
           jobDetails.map(async (job) => {
             const agent = await Agent.findOne({
               where: { agentId: job.agentId },
               attributes: ['fullName', 'image'],
             });
     
+            const agency = await Agency.findOne({
+              where: {
+                id: job.agencyId
+              },
+              attributes: ['Name', 'image', 'Location']
+            });
+    
             return {
               ...job.toJSON(),
-              agentFullName: agent ? agent.fullName : null,
-              agentImage: agent ? agent.image : null,
+              agentFullName: agent?.fullName || null,
+              agentImage: agent?.image || null,
+              agencyName: agency?.Name || null,
+              agencyImage: agency?.image || null,
+              agencyLocation: agency?.Location || null,
             };
           })
-        )
+        );
     
-        return res.status(200).json({status:1,message:messages.getjobDetails,data:jobsWithAgentData});
+    
+    
+        return res.status(200).json({status:1,message:messages.getjobDetails, data: jobsWithDetails
+        });
       } catch (error) {
         return res.status(500).json({ error: (error as Error).message });
       }
@@ -967,8 +1008,430 @@ try {
       } catch (error) {
         
       }
-    }
-    }
+    },
+    jobAdd:async (req:Request,res:Response) =>{
+           try { 
+          const messages = (req as any).messages
+
+          const {
+              customerName,
+              site,
+              carNumber,
+              brand,
+              element,
+              deliveryDate,
+              deliveryTime,
+              newDamage,
+              agentId,
+              agencyId,
+              tasks = [] // Default to an empty array if not 
+          } = req.body;
+  
+          // const photos = req.files
+          //     ? (req.files as Express.Multer.File[]).map((file) => ({
+          //         id: imageCounter++,
+          //         image: file.path
+          //     }))
+          //     : [];
+  
+          // Process tasks (assign UUIDs)
+          const parsedTasks = Array.isArray(tasks) 
+          ? tasks 
+          : typeof tasks === 'string' 
+              ? JSON.parse(tasks) // If tasks is a stringified JSON array, parse it
+              : [];
+      
+      const processedTasks = parsedTasks.map((task: any) => ({
+          id: uuidv4(),
+          name: task.name
+      }));
+          // Generate uniqueId in desired format: #ABC4567898
+          const randomNumber = Math.floor(100000000 + Math.random() * 900000000); // 9-digit number
+          const uniqueId = `#ABC${randomNumber}`;
+  
+          const newJob = await Job.create({
+              customerName,
+              site,
+              carNumber,
+              brand,
+              element,
+              deliveryDate,
+              deliveryTime,
+              newDamage,
+              // photos,
+              tasks: processedTasks, // Ensure processed tasks are saved
+              agentId,
+              agencyId,
+              uniqueId
+          });
+  
+          return res.status(200).json({status:1, message:messages.jobAdded, job: newJob });
+      } catch (error) {
+          console.error('Error adding job:', error);
+          return res.status(500).json({ message:messages.internalServerError });
+      }
 
 
+    },
+    ExportJobData:async (req:Request,res:Response) =>{
+      try {
+        const { jobId } = req.body;
+    
+        const jobDetails = await Job.findAll({ where: { id: jobId } });
+    
+        const jobsWithDetails = await Promise.all(
+          jobDetails.map(async (job) => {
+            const agent = await Agent.findOne({
+              where: { agentId: job.agentId },
+              attributes: ['fullName', 'image'],
+            });
+    
+            const agency = await Agency.findOne({
+              where: { id: job.agencyId },
+              attributes: ['Name', 'image', 'Location'],
+            });
+    
+            return {
+              JobID: job.id,
+              UniqueID: job.uniqueId,
+              CustomerName: job.customerName,
+              Site: job.site,
+              CarNumber: job.carNumber,
+              Brand: job.brand,
+              Element: job.element,
+              DeliveryDate: job.deliveryDate?.toISOString().split('T')[0] || '',
+              DeliveryTime: job.deliveryTime || '',
+              NewDamage: job.newDamage || '',
+              Photos: job.photos?.map(p => p.image).join(', ') || '',
+              Tasks: job.tasks?.map(t => t.name).join(', ') || '',
+              Status: job.status,
+              AgentName: agent?.fullName || '',
+              AgentImage: agent?.image || '',
+              AgencyName: agency?.Name || '',
+              AgencyImage: agency?.image || '',
+              AgencyLocation: agency?.Location || ''
+            };
+          })
+        );
+    
+        const csvWriter = createObjectCsvStringifier({
+          header: [
+            { id: 'JobID', title: 'Job ID' },
+            { id: 'UniqueID', title: 'Unique ID' },
+            { id: 'CustomerName', title: 'Customer Name' },
+            { id: 'Site', title: 'Site' },
+            { id: 'CarNumber', title: 'Car Number' },
+            { id: 'Brand', title: 'Brand' },
+            { id: 'Element', title: 'Element' },
+            { id: 'DeliveryDate', title: 'Delivery Date' },
+            { id: 'DeliveryTime', title: 'Delivery Time' },
+            { id: 'NewDamage', title: 'New Damage' },
+            { id: 'Photos', title: 'Photos' },
+            { id: 'Tasks', title: 'Tasks' },
+            { id: 'Status', title: 'Status' },
+            { id: 'AgentName', title: 'Agent Name' },
+            { id: 'AgentImage', title: 'Agent Image' },
+            { id: 'AgencyName', title: 'Agency Name' },
+            { id: 'AgencyImage', title: 'Agency Image' },
+            { id: 'AgencyLocation', title: 'Agency Location' },
+          ]
+        });
+    
+        const fileName = `job-details-${Date.now()}.csv`;
+        const filePath = path.join(__dirname, '../../uploads', fileName);
+        const writableStream = fs.createWriteStream(filePath);
+    
+        writableStream.write(csvWriter.getHeaderString());
+        writableStream.write(csvWriter.stringifyRecords(jobsWithDetails));
+        writableStream.end();
+    
+        writableStream.on('finish', () => {
+          const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${fileName}`;
+          return res.status(200).json({
+            status: 1,
+            message: 'CSV generated successfully',
+            downloadLink: fileUrl,
+          });
+        });
+    
+      } catch (error) {
+        return res.status(500).json({ status: 0, error: (error as Error).message });
+      }
+    
+ 
+    },
+        ExportAllJobData:async (req:Request,res:Response) =>{
+          try {
+            const jobs = await Job.findAll();
+        
+            const enrichedJobs = await Promise.all(
+              jobs.map(async (job) => {
+                const agent = await Agent.findOne({ where: { agentId: job.agentId } });
+                const agency = await Agency.findOne({ where: { id: job.agencyId } });
+        
+                return {
+                  id: job.id,
+                  uniqueId: job.uniqueId,
+                  customerName: job.customerName,
+                  site: job.site,
+                  carNumber: job.carNumber,
+                  brand: job.brand,
+                  element: job.element,
+                  deliveryDate: job.deliveryDate?.toISOString().split('T')[0],
+                  deliveryTime: job.deliveryTime,
+                  newDamage: job.newDamage,
+                  Photos: job.photos?.map(p => p.image).join(', ') || '',
+                  Tasks: job.tasks?.map(t => t.name).join(', ') || '',
+                  agentName: agent?.fullName || '',
+                  agencyName: agency?.Name || '',
+                  agencyLocation: agency?.Location || '',
+                  status: job.status,
+                };
+              })
+            );
+        
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Jobs');
+        
+            worksheet.columns = [
+              { header: 'Job ID', key: 'id', width: 10 },
+              { header: 'Unique ID', key: 'uniqueId', width: 15 },
+              { header: 'Customer Name', key: 'customerName', width: 20 },
+              { header: 'Site', key: 'site', width: 15 },
+              { header: 'Car Number', key: 'carNumber', width: 15 },
+              { header: 'Brand', key: 'brand', width: 15 },
+              { header: 'Element', key: 'element', width: 15 },
 
+              { header: 'Delivery Date', key: 'deliveryDate', width: 15 },
+              { header: 'Delivery Time', key: 'deliveryTime', width: 15 },
+              { header: 'New Damage', key: 'newDamage', width: 20 },
+
+
+              { header: 'Tasks', key: 'Tasks', width: 30 },
+              { header: 'Photos', key: 'Photos', width: 30 },
+
+              { header: 'Agent', key: 'agentName', width: 20 },
+              { header: 'Agency', key: 'agencyName', width: 20 },
+              { header: 'Location', key: 'agencyLocation', width: 20 },
+              { header: 'Status', key: 'status', width: 15 },
+            ];
+        
+            // Apply header style (bold and bigger font)
+            worksheet.getRow(1).eachCell((cell) => {
+              cell.font = { bold: true, size: 12 };
+            });
+        
+            enrichedJobs.forEach((job) => {
+              worksheet.addRow(job);
+            });
+        
+            const fileName = `job-details-${Date.now()}.xlsx`;
+            const filePath = path.join(__dirname, '../../uploads', fileName);
+            await workbook.xlsx.writeFile(filePath);
+        
+            const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${fileName}`;
+            return res.status(200).json({
+              status: 1,
+              message: 'Excel exported successfully with formatting',
+              fileUrl,
+            });
+          } catch (error) {
+            return res.status(500).json({ status: 0, error: (error as Error).message });
+          }
+
+
+          // try {
+          //   const jobs = await Job.findAll();
+        
+          //   const enrichedJobs = await Promise.all(
+          //     jobs.map(async (job) => {
+          //       const agent = await Agent.findOne({ where: { agentId: job.agentId } });
+          //       const agency = await Agency.findOne({ where: { id: job.agencyId } });
+        
+          //       return {
+          //         id: job.id,
+          //         uniqueId: job.uniqueId,
+          //         customerName: job.customerName,
+          //         site: job.site,
+          //         carNumber: job.carNumber,
+          //         brand: job.brand,
+          //         element: job.element,
+          //         deliveryDate: job.deliveryDate?.toISOString().split('T')[0],
+          //         deliveryTime: job.deliveryTime,
+          //         newDamage: job.newDamage,
+          //         agentName: agent?.fullName || '',
+          //         agencyName: agency?.Name || '',
+          //         agencyLocation: agency?.Location || '',
+          //         status: job.status,
+          //       };
+          //     })
+          //   );
+        
+          //   const csvWriter = createObjectCsvStringifier({
+          //     header: [
+          //       { id: 'id', title: 'Job ID' },
+          //       { id: 'uniqueId', title: 'Unique ID' },
+          //       { id: 'customerName', title: 'Customer Name' },
+          //       { id: 'site', title: 'Site' },
+          //       { id: 'carNumber', title: 'Car Number' },
+          //       { id: 'brand', title: 'Brand' },
+          //       { id: 'element', title: 'Element' },
+          //       { id: 'deliveryDate', title: 'Delivery Date' },
+          //       { id: 'deliveryTime', title: 'Delivery Time' },
+          //       { id: 'newDamage', title: 'New Damage' },
+          //       { id: 'agentName', title: 'Agent' },
+          //       { id: 'agencyName', title: 'Agency' },
+          //       { id: 'agencyLocation', title: 'Location' },
+          //       { id: 'status', title: 'Status' },
+          //     ],
+          //   });
+        
+          //   const fileName = `job-details-${Date.now()}.csv`;
+          //   const filePath = path.join(__dirname, '../../uploads', fileName);
+          //   const writableStream = fs.createWriteStream(filePath);
+        
+          //   writableStream.write(csvWriter.getHeaderString());
+          //   writableStream.write(csvWriter.stringifyRecords(enrichedJobs));
+          //   writableStream.end();
+        
+          //   // ✅ Handle stream completion
+          //   writableStream.on('finish', () => {
+          //     const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${fileName}`;
+          //     return res.status(200).json({
+          //       status: 1,
+          //       message: 'CSV exported successfully',
+          //       fileUrl,
+          //     });
+          //   });
+        
+          //   // ❌ Catch stream errors too
+          //   writableStream.on('error', (err) => {
+          //     return res.status(500).json({ status: 0, error: 'File writing failed: ' + err.message });
+          //   });
+          // } catch (error) {
+          //   return res.status(500).json({ status: 0, error: (error as Error).message });
+          // }
+
+
+  
+  },
+  Dashboard:async (req:Request,res:Response) =>{
+try {
+    const { messages } = req as any;
+    const { startOfToday, startOfWeek, startOfMonth, startOfYear } = getTimeRanges();
+
+    const [
+      // Customer Counts
+      todayCustomers,
+      weeklyCustomers,
+      monthlyCustomers,
+      yearlyCustomers,
+
+      // Agency Counts
+      todayAgencies,
+      weeklyAgencies,
+      monthlyAgencies,
+      yearlyAgencies,
+
+      todayAgents,
+      weeklyAgents,
+      monthlyAgents,
+      yearlyAgents,
+
+      // Job Counts
+      totalActiveJobs,
+      todayJobs,
+      weeklyJobs,
+      monthlyJobs,
+      yearlyJobs,
+
+      // Agent Counts
+
+
+      // Support Counts
+      todaySupport,
+      weeklySupport,
+      monthlySupport,
+      yearlySupport
+    ] = await Promise.all([
+      // Customers
+      customer.count({ where: { createdAt: { [Op.gte]: startOfToday } } }),
+      customer.count({ where: { createdAt: { [Op.gte]: startOfWeek } } }),
+      customer.count({ where: { createdAt: { [Op.gte]: startOfMonth } } }),
+      customer.count({ where: { createdAt: { [Op.gte]: startOfYear } } }),
+
+      // Agencies
+      Agent.count({ where: { createdAt: { [Op.gte]: startOfToday } } }),
+      Agent.count({ where: { createdAt: { [Op.gte]: startOfWeek } } }),
+      Agent.count({ where: { createdAt: { [Op.gte]: startOfMonth } } }),
+      Agent.count({ where: { createdAt: { [Op.gte]: startOfYear } } }),
+
+      Agency.count({ where: { createdAt: { [Op.gte]: startOfToday } } }),
+      Agency.count({ where: { createdAt: { [Op.gte]: startOfWeek } } }),
+      Agency.count({ where: { createdAt: { [Op.gte]: startOfMonth } } }),
+      Agency.count({ where: { createdAt: { [Op.gte]: startOfYear } } }),
+
+
+      // Jobs
+      Job.count({ where: { status: "active" } }),
+      Job.count({ where: { createdAt: { [Op.gte]: startOfToday as Date } } }),
+      Job.count({ where: { createdAt: { [Op.gte]: startOfWeek } } }),
+      Job.count({ where: { createdAt: { [Op.gte]: startOfMonth } } }),
+      Job.count({ where: { createdAt: { [Op.gte]: startOfYear } } }),
+
+      // Support
+      Support.count({ where: { createdAt: { [Op.gte]: startOfToday } } }),
+      Support.count({ where: { createdAt: { [Op.gte]: startOfWeek } } }),
+      Support.count({ where: { createdAt: { [Op.gte]: startOfMonth } } }),
+      Support.count({ where: { createdAt: { [Op.gte]: startOfYear } } }),
+    ]);
+
+    res.status(200).json({
+      status: 1,
+      message: messages.dashboardGet,
+      data: {
+        customers: {
+          today: todayCustomers,
+          week: weeklyCustomers,
+          month: monthlyCustomers,
+          year: yearlyCustomers
+        },
+        agencies: {
+          today: todayAgencies,
+          week: weeklyAgencies,
+          month: monthlyAgencies,
+          year: yearlyAgencies
+        },
+        agents: {
+          today: todayAgents,
+          week: weeklyAgents,
+          month: monthlyAgents,
+          year: yearlyAgents
+        },
+        jobs: {
+          active: totalActiveJobs,
+          today: todayJobs,
+          week: weeklyJobs,
+          month: monthlyJobs,
+          year: yearlyJobs
+        },
+        support: {
+          today: todaySupport,
+          week: weeklySupport,
+          month: monthlySupport,
+          year: yearlySupport
+        }
+      }
+    });
+
+  } catch (err) {
+    console.error("Dashboard error:", err);
+    res.status(500).json({
+      status: 0,
+      message: (req as any).messages?.internalServerError || "Internal Server Error"
+    });
+  }
+  }
+
+
+}

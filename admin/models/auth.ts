@@ -14,7 +14,7 @@ interface AdminAttributes {
   resetPasswordToken?:string
   resetPasswordExpires?:Date
   language?:string
-  role?: 'Admin'|'Agency'
+  role?: string
 
 
 
@@ -36,7 +36,7 @@ class Admin extends Model<AdminAttributes> {
     language!:string
     Location!:string;
     agentId!: string[];
-    role!:'Admin'|'Agency'
+    role!:string
 
 
 
@@ -93,7 +93,8 @@ Admin.init(
         allowNull:true
       },
       role:{
-      type:DataTypes.ENUM('Admin','Agency')
+      type:DataTypes.STRING,
+      defaultValue:'Admin'
     },
 
   },

@@ -27,12 +27,12 @@ dotenv.config();
 
 // Initialize Sequelize with PostgreSQL configuration
 const sequelize = new Sequelize({
-  database: process.env.DB_NAME!,
-  username: process.env.DB_USER!,
-  password: process.env.DB_PASSWORD!,
-  host: process.env.DB_HOST!,
-  port: parseInt(process.env.DB_PORT || '5432', 10), // PostgreSQL default port is 5432
-  dialect: 'postgres', // ✅ changed from 'mysql' to 'postgres'
+  database: 'carbio',
+  username: 'carbiouser',
+  password: '2sdG935FiK9bzDIoq4THthvy9pnJsOvY',
+  host: 'dpg-d0re8pidbo4c73a99860-a',
+  port: 5432, // PostgreSQL default port
+  dialect: 'postgres',
   logging: false,
 });
 

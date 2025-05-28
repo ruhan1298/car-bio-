@@ -1,7 +1,6 @@
 // models/ShowRoomUser.ts
 import { Model, DataTypes } from 'sequelize';
 import sequelize from '../../models/index';
-import { bool } from 'aws-sdk/clients/signer';
 
 // import AddCarsPost from '../models/AddCarsPost';
 

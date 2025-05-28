@@ -12,6 +12,9 @@ import languageMiddleware from '../../middleware/languagemiddleware';
 router.post("/Login", languageMiddleware,(req: Request, res: Response) => {
     authController.AdminLogin(req, res);
   });
+  router.post("/register", languageMiddleware,(req: Request, res: Response) => {
+    authController.AdmiinRegister(req, res);
+  });
   router.get("/get-admin",userAuth, (req: Request, res: Response) => {
     authController.GetAdmin(req, res);
   });

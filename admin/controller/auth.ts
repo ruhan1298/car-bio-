@@ -51,6 +51,88 @@ const getTimeRanges = () => {
 
 
 export default {
+  AdmiinRegister:async(req:Request,res:Response)=>{
+  try {
+    const {
+      fullName,
+      email,
+      password,
+      mobilenumber,
+      image,
+      language,
+      Location,
+      role,
+    } = req.body;
+
+    const messages = (req as any).messages;
+
+    // Basic validation
+    if (!fullName || !email || !password || !mobilenumber) {
+      return res.status(400).json({
+        status: 0,
+        message: messages?.requiredInput || "Full name, email, password, and mobile number are required",
+      });
+    }
+
+    // Check if email already exists
+    const existingAdmin = await Admin.findOne({ where: { email } });
+    if (existingAdmin) {
+      return res.status(400).json({
+        status: 0,
+        message: messages?.emailAlreadyExists || "Email already registered",
+      });
+    }
+
+    // Hash password
+          const encryptedPassword = await bcrypt.hash(password, 10);
+
+    // Create new admin user
+    const newAdmin = await Admin.create({
+      fullName,
+      email,
+      password: encryptedPassword,
+      mobilenumber,
+      language: language || "en",
+      Location: Location || null,
+      role: role || "Admin",
+      // agentId, permissions, resetPasswordToken, resetPasswordExpires can be added later as needed
+    });
+
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        id: newAdmin.id,
+        fullName: newAdmin.fullName,
+        email: newAdmin.email,
+      },
+      process.env.TOKEN_KEY as string,
+      { expiresIn: "1d" }
+    );
+
+    return res.status(201).json({
+      status: 1,
+      message: messages?.registerSuccess || "Admin registered successfully",
+      data: {
+        id: newAdmin.id,
+        fullName: newAdmin.fullName,
+        email: newAdmin.email,
+        mobilenumber: newAdmin.mobilenumber,
+        image: newAdmin.image,
+        language: newAdmin.language,
+        Location: newAdmin.Location,
+        role: newAdmin.role,
+        token,
+      },
+    });
+  } catch (error) {
+    console.error("Register error:", error);
+    return res.status(500).json({
+      status: 0,
+      message: (req as any).messages?.internalServerError || "Internal server error",
+    });
+  }
+
+  },
     
     AdminLogin: async (req: Request, res: Response) => {
         try {

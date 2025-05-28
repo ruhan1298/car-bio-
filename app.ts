@@ -38,20 +38,20 @@ app.use('/api/v1/agency',agencyRouter)
 // app.use('/', indexRouter);
 // app.use('/users', usersRouter);
 import admin from './admin/models/auth'
-admin.sync({alter:true})
+admin.sync({force:true})
 import agent from './Agent/models/Agent'
-agent.sync({alter:true})
+agent.sync({force:true})
 import Job from './Agent/models/job'
-Job.sync({alter:true})
+Job.sync({force:true})
   // agent.sync({force:true})
 import agency from './admin/models/Agency'
-agency.sync({alter:true})
+agency.sync({force:true})
 import Support from './Agent/models/support'
-Support.sync({alter:true})
+Support.sync({force:true})
 import customer from './admin/models/customer'
-customer.sync({alter:true})
+customer.sync({force:true})
 import MasterData from './admin/models/MasterData';
-MasterData.sync({alter:true})
+MasterData.sync({force:true})
 import Terms from './admin/models/terms'
 // Terms.sync({force:true})
 
